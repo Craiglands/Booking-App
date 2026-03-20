@@ -100,6 +100,7 @@ def get_date_days_from_now(days):
 # DATABASE SETUP & MIGRATION (PostgreSQL version)
 # ============================================
 def init_database():
+    print("=== INIT DATABASE START ===")
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -183,6 +184,7 @@ def init_database():
         conn.commit()
         conn.close()
         logger.info("✅ Database initialized/migrated successfully")
+        print("=== INIT DATABASE SUCCESS ===")
     except Exception as e:
         logger.error(f"❌ Database initialization error: {e}")
 
@@ -1302,6 +1304,7 @@ def network_info():
 # ============================================
 # START APPLICATION
 # ============================================
+init_database()
 if __name__ == '__main__':
     print("=" * 70)
     print("CRAIGLANDS BOOKING SYSTEM - NETWORK SERVER")
