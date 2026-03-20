@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deleted Bookings - Craiglands</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-image: url('https://files.stampede.ai/514e1892-e0be-11ec-996f-0667c77a7ebd/media/3ebabf33-84d1-4a71-ac77-88b241d399cb.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 0;
+        }
+        .container-fluid {
+            position: relative;
+            z-index: 1;
+        }
+        .table td, .table th {
+            font-size: 0.85rem;
+        }
+        .btn-sm {
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="p-3">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="text-danger"><i class="bi bi-trash"></i> Deleted Bookings</h4>
+            <a href="/" class="btn btn-outline-secondary btn-sm">← Back</a>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-danger text-white py-2">
+                <h5 class="mb-0 small">Recover Deleted Bookings</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if bookings %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0 small">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Time</th>
+                                <th>Customer</th>
+                                <th>Room</th>
+                                <th>Guests</th>
+                                <th>Contact</th>
+                                <th>Payment</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in bookings %}
+                            <tr>
+                                <td>{{ b.id }}</td>
+                                <td>{{ b.date }}</td>
+                                <td>{{ b.service }}</td>
+                                <td>{{ b.time if b.service != 'Packed Lunch' else b.collection_time }}</td>
+                                <td>{{ b.name }}</td>
+                                <td>{{ b.room or '-' }}</td>
+                                <td>{{ b.guests or '1' }}</td>
+                                <td>
+                                    {{ b.tel or '-' }}<br>
+                                    <small>{{ b.guest_email or '' }}</small>
+                                </td>
+                                <td>
+                                    {% if b.paid == 'Paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif b.paid == 'Included' %}
+                                        <span class="badge bg-info">Included</span>
+                                    {% elif b.paid == 'Voucher' %}
+                                        <span class="badge bg-warning">Voucher</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="restoreBooking({{ b.id }})">
+                                        <i class="bi bi-arrow-repeat"></i> Restore
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-emoji-smile display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">No deleted bookings found.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function restoreBooking(bookingId) {
+            if (confirm('Restore this booking? It will reappear in the main list.')) {
+                fetch(`/api/booking/${bookingId}/restore`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('Booking restored successfully!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

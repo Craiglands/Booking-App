@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if booking %}Edit{% else %}New{% endif %} Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .guest-card {
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .packed-fields { display: none; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1>{% if booking %}Edit{% else %}New{% endif %} Booking</h1>
+        
+        <form method="POST" class="needs-validation" novalidate>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label>Date</label>
+                    <input type="date" name="date" class="form-control" 
+                           value="{{ booking.date if booking else selected_date }}" required>
+                </div>
+                
+                <div class="col-md-3">
+                    <label>Service</label>
+                    <select name="service" id="serviceSelect" class="form-select" required 
+                            onchange="togglePackedFields()">
+                        {% for service_name in service_order %}
+                        <option value="{{ service_name }}" 
+                            {% if (booking and booking.service == service_name) or (request.args.get('service') == service_name) %}selected{% endif %}>
+                            {{ service_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Regular booking fields (shown for non-packed) -->
+                <div id="regularFields">
+                    <div class="col-md-3">
+                        <label>Time (15-min slots)</label>
+                        <input type="time" name="time" class="form-control" step="900"
+                               value="{% if request.args.get('time') %}{{ request.args.get('time') }}{% elif booking and booking.service != 'Packed Lunch' %}{{ booking.time }}{% endif %}">
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label>Paid</label>
+                        <select name="paid" class="form-select">
+                            <option value="No" {% if booking and booking.paid == 'No' %}selected{% endif %}>No</option>
+                            <option value="Yes" {% if booking and booking.paid == 'Yes' %}selected{% endif %}>Yes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>Customer Name *</label>
+                        <input type="text" name="name" class="form-control" 
+                               value="{{ booking.name if booking else '' }}">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>Phone</label>
+                        <input type="text" name="tel" class="form-control" 
+                               value="{{ booking.tel if booking else '' }}">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>Voucher</label>
+                        <input type="text" name="voucher" class="form-control" 
+                               value="{{ booking.voucher if booking else '' }}">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label>Dietary Requirements</label>
+                        <input type="text" name="dietary" class="form-control" 
+                               value="{{ booking.dietary if booking else '' }}">
+                    </div>
+                    
+                    <div class="col-12">
+                        <label>Notes</label>
+                        <textarea name="notes" class="form-control" rows="3">{{ booking.notes if booking else '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Packed Lunch fields (initially hidden) -->
+                <div id="packedFields" class="packed-fields w-100">
+                    <div class="card mb-4 border-primary mt-3">
+                        <div class="card-header bg-primary text-white">
+                            <h5>🥪 Packed Lunch Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Room Number/Name *</label>
+                                    <input type="text" name="room" class="form-control" 
+                                           value="{{ booking.room if booking else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Surname *</label>
+                                    <input type="text" name="surname" class="form-control" 
+                                           value="{{ booking.surname if booking else '' }}">
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Collection Time *</label>
+                                    <select name="collection_time" class="form-select">
+                                        <option value="">Select time</option>
+                                        {% for hour in range(7, 12) %}
+                                            {% for minute in ['00','15','30','45'] %}
+                                                {% set time_str = "%02d:%s"|format(hour, minute) %}
+                                                <option value="{{ time_str }}" {% if booking and booking.collection_time == time_str %}selected{% endif %}>{{ time_str }}</option>
+                                            {% endfor %}
+                                        {% endfor %}
+                                        <option value="12:00" {% if booking and booking.collection_time == '12:00' %}selected{% endif %}>12:00 PM</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Number of Guests *</label>
+                                    <input type="number" name="guest_count" id="guest_count" 
+                                           class="form-control" min="1" max="10" value="{{ booking.guests if booking and booking.guests else 1 }}"
+                                           onchange="updateGuestForms(this.value)">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Contact Telephone</label>
+                                    <input type="text" name="tel" class="form-control" value="{{ booking.tel if booking else '' }}">
+                                </div>
+                            </div>
+                            
+                            <div id="guest-forms-container" class="mt-4">
+                                <!-- JavaScript will populate guest forms -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="/?date={{ selected_date }}" class="btn btn-secondary">Cancel</a>
+                
+                {% if booking %}
+                <a href="/delete/{{ booking.id }}" class="btn btn-danger float-end" 
+                   onclick="return confirm('Delete this booking permanently?')">Delete</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        // Pass guest meals data from Flask to JavaScript
+        const guestMeals = {{ guest_meals|tojson if guest_meals else '[]' }};
+
+        function getGuestFormHTML(guestNumber, fillingVal, breadVal, dietaryVal) {
+            fillingVal = fillingVal || '';
+            breadVal = breadVal || '';
+            dietaryVal = dietaryVal || '';
+            return `
+                <div class="guest-card">
+                    <h5 class="text-success">👤 Guest ${guestNumber}</h5>
+                    <div class="row">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold">Filling Selection</label>
+                            <select name="filling_${guestNumber}" class="form-select">
+                                <option value="">-- Choose filling --</option>
+                                <option value="Cheese & onion" ${fillingVal === 'Cheese & onion' ? 'selected' : ''}>🧀 Cheese & onion</option>
+                                <option value="Ham & tomato" ${fillingVal === 'Ham & tomato' ? 'selected' : ''}>🥩 Ham & tomato</option>
+                                <option value="Egg mayo" ${fillingVal === 'Egg mayo' ? 'selected' : ''}>🥚 Egg mayo</option>
+                                <option value="Tuna mayo & cucumber" ${fillingVal === 'Tuna mayo & cucumber' ? 'selected' : ''}>🐟 Tuna mayo & cucumber</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Bread</label>
+                            <select name="bread_${guestNumber}" class="form-select">
+                                <option value="">-- Select --</option>
+                                <option value="Brown" ${breadVal === 'Brown' ? 'selected' : ''}>🍞 Brown</option>
+                                <option value="White" ${breadVal === 'White' ? 'selected' : ''}>🥖 White</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Dietary</label>
+                            <input type="text" name="guest_dietary_${guestNumber}" class="form-control" 
+                                   placeholder="Allergies, etc." value="${dietaryVal}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateGuestForms(count) {
+            const container = document.getElementById('guest-forms-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= count; i++) {
+                // Find if we have pre-filled data for this guest (editing)
+                let filling = '', bread = '', dietary = '';
+                if (guestMeals.length > 0) {
+                    const meal = guestMeals.find(m => m.guest_number === i);
+                    if (meal) {
+                        filling = meal.filling || '';
+                        bread = meal.bread || '';
+                        dietary = meal.dietary || '';
+                    }
+                }
+                container.innerHTML += getGuestFormHTML(i, filling, bread, dietary);
+            }
+        }
+
+        function togglePackedFields() {
+            const service = document.getElementById('serviceSelect').value;
+            const regular = document.getElementById('regularFields');
+            const packed = document.getElementById('packedFields');
+            const timeInput = document.querySelector('input[name="time"]');
+            
+            if (service === 'Packed Lunch') {
+                regular.style.display = 'none';
+                packed.style.display = 'block';
+                timeInput.required = false;
+                // Enable packed fields requirements
+                document.querySelector('input[name="room"]').required = true;
+                document.querySelector('input[name="surname"]').required = true;
+                document.querySelector('select[name="collection_time"]').required = true;
+                document.querySelector('input[name="guest_count"]').required = true;
+            } else {
+                regular.style.display = 'block';
+                packed.style.display = 'none';
+                timeInput.required = true;
+                document.querySelector('input[name="room"]').required = false;
+                document.querySelector('input[name="surname"]').required = false;
+                document.querySelector('select[name="collection_time"]').required = false;
+                document.querySelector('input[name="guest_count"]').required = false;
+            }
+        }
+
+        // On page load
+        window.onload = function() {
+            togglePackedFields();
+            const guestCountInput = document.getElementById('guest_count');
+            if (guestCountInput) {
+                const count = parseInt(guestCountInput.value) || 1;
+                updateGuestForms(count);
+            }
+        };
+
+        // Form validation
+        (function() {
+            'use strict';
+            window.addEventListener('load', function() {
+                var forms = document.getElementsByClassName('needs-validation');
+                Array.prototype.filter.call(forms, function(form) {
+                    form.addEventListener('submit', function(event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
+</body>
+</html>

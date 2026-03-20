@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Craiglands Bookings - {{ selected_date }}</title>
+    <style>
+        @page { 
+            size: A4; 
+            margin: 1.5cm;
+            {% if orientation == 'landscape' %}
+            size: A4 landscape;
+            {% endif %}
+            @top-center {
+                content: "Craiglands Hotel";
+                font-family: Arial, sans-serif;
+                font-size: 9pt;
+                color: #666;
+            }
+            @bottom-center {
+                content: "Printed: {{ datetime.now().strftime('%d/%m/%Y %H:%M') }}";
+                font-family: Arial, sans-serif;
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            font-size: 10pt; 
+            line-height: 1.3;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #0d3e6f; 
+            padding-bottom: 8px; 
+        }
+        
+        .header h1 { 
+            margin: 0; 
+            font-size: 18pt; 
+            color: #0d3e6f;
+            font-weight: bold;
+        }
+        
+        .header h2 { 
+            margin: 2px 0; 
+            font-size: 12pt; 
+            color: #666; 
+            font-weight: normal;
+        }
+        
+        .header h3 { 
+            margin: 5px 0 0; 
+            font-size: 11pt; 
+            color: #333;
+            background: #f0f5fa;
+            display: inline-block;
+            padding: 2px 15px;
+            border-radius: 20px;
+        }
+        
+        .print-controls {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .print-controls h5 {
+            margin-bottom: 8px;
+            color: #0d3e6f;
+            font-size: 11pt;
+        }
+        
+        .service-checkbox {
+            margin-right: 15px;
+            display: inline-block;
+            font-size: 10pt;
+        }
+        
+        .service-checkbox input {
+            margin-right: 3px;
+        }
+        
+        .service-section { 
+            page-break-inside: avoid; 
+            margin-bottom: 20px; 
+        }
+        
+        .service-title { 
+            background: #f0f5fa; 
+            padding: 6px 10px; 
+            margin: 10px 0 8px 0; 
+            font-weight: bold; 
+            font-size: 12pt; 
+            color: #0d3e6f;
+            border-left: 4px solid #0d3e6f;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .service-title .count { 
+            float: right; 
+            font-weight: normal; 
+            color: #666;
+            background: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10pt;
+        }
+        
+        .bookings-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 9pt; 
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .bookings-table th { 
+            background: #0d3e6f; 
+            color: white;
+            padding: 5px; 
+            border: 1px solid #1a5a9c; 
+            text-align: left; 
+            font-weight: 600;
+        }
+        
+        .bookings-table td { 
+            padding: 5px; 
+            border: 1px solid #ddd; 
+            vertical-align: top; 
+            background: white;
+        }
+        
+        .bookings-table tr:nth-child(even) td {
+            background: #f9f9f9;
+        }
+        
+        .guest-list { 
+            margin: 0; 
+            padding-left: 12px; 
+            font-size: 8pt; 
+            color: #555;
+        }
+        
+        .guest-list li {
+            margin-bottom: 1px;
+        }
+        
+        .no-bookings { 
+            color: #999; 
+            font-style: italic; 
+            padding: 15px; 
+            text-align: center; 
+            border: 1px dashed #ccc; 
+            background: #f9f9f9;
+            border-radius: 5px;
+            font-size: 10pt;
+        }
+        
+        .room-badge { 
+            color: #666; 
+            font-size: 8pt; 
+            display: block;
+            margin-top: 1px;
+        }
+        
+        .status-paid {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .status-unpaid {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .status-included {
+            color: #17a2b8;
+            font-weight: bold;
+        }
+        
+        .status-voucher {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        
+        .footer { 
+            margin-top: 20px; 
+            font-size: 8pt; 
+            color: #666; 
+            text-align: center; 
+            border-top: 1px solid #ddd; 
+            padding-top: 8px; 
+        }
+        
+        .summary-box {
+            background: #f0f5fa;
+            padding: 8px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 10pt;
+        }
+        
+        .summary-box span {
+            display: inline-block;
+            margin: 0 10px;
+        }
+        
+        .summary-box strong {
+            color: #0d3e6f;
+        }
+        
+        .orientation-toggle {
+            margin: 5px 0 10px;
+            text-align: center;
+        }
+        
+        @media print {
+            .no-print, .print-controls, .orientation-toggle { display: none; }
+            a { text-decoration: none; color: black; }
+            .service-title { background: #f0f5fa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .bookings-table th { background: #0d3e6f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Craiglands Hotel & Restaurant</h1>
+        <h2>Daily Booking Schedule</h2>
+        <h3>{{ selected_date }}</h3>
+    </div>
+    
+    <!-- Orientation toggle (not printed) -->
+    <div class="orientation-toggle no-print">
+        {% if orientation == 'portrait' %}
+            <a href="?date={{ selected_date }}&orientation=landscape" class="btn btn-sm btn-outline-secondary">Switch to Landscape</a>
+        {% else %}
+            <a href="?date={{ selected_date }}&orientation=portrait" class="btn btn-sm btn-outline-secondary">Switch to Portrait</a>
+        {% endif %}
+    </div>
+    
+    <!-- Print Controls (not printed) -->
+    <div class="print-controls no-print">
+        <h5><i class="bi bi-printer"></i> Select sections to print:</h5>
+        <div>
+            {% for service_name in service_order %}
+            <label class="service-checkbox">
+                <input type="checkbox" class="service-checkbox-input" value="{{ service_name }}" checked onchange="updatePrintPreview()">
+                {{ service_name }}
+            </label>
+            {% endfor %}
+        </div>
+        <button class="btn btn-primary btn-sm mt-2" onclick="printSelected()">
+            <i class="bi bi-printer"></i> Print Selected
+        </button>
+    </div>
+    
+    <!-- Summary Statistics (will be printed) -->
+    <div class="summary-box">
+        <span><strong>Total:</strong> {{ bookings|length }}</span>
+        {% for service_name in service_order %}
+            {% set count = bookings|selectattr('service', 'equalto', service_name)|list|length %}
+            <span><strong>{{ service_name }}:</strong> {{ count }}</span>
+        {% endfor %}
+    </div>
+    
+    <!-- Bookings Sections -->
+    {% for service_name in service_order %}
+        {% set service_bookings = bookings|selectattr('service', 'equalto', service_name)|list %}
+        <div class="service-section" id="section-{{ service_name|replace(' ', '-') }}">
+            <div class="service-title">
+                {{ service_name }} 
+                <span class="count">{{ service_bookings|length }} booking(s)</span>
+            </div>
+            
+            {% if service_bookings %}
+            <table class="bookings-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Time</th>
+                        <th>Customer</th>
+                        <th>Room</th>
+                        <th>Guests</th>
+                        {% if service_name == 'Packed Lunch' %}
+                        <th>Meal Details</th>
+                        {% endif %}
+                        <th>Contact</th>
+                        <th>Dietary</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in service_bookings %}
+                    <tr>
+                        <td>{{ b.id }}</td>
+                        <td><strong>{{ b.time if b.service != 'Packed Lunch' else b.collection_time }}</strong></td>
+                        <td>
+                            {{ b.name }}
+                            {% if b.guest_email %}
+                            <br><small>{{ b.guest_email }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ b.room or '-' }}</td>
+                        <td>{{ b.guests or '1' }}</td>
+                        {% if service_name == 'Packed Lunch' %}
+                        <td>
+                            {% if b.guest_meals and b.guest_meals|length > 0 %}
+                                <ul class="guest-list">
+                                {% for meal in b.guest_meals %}
+                                    <li><strong>G{{ meal.guest_number }}:</strong> {{ meal.filling or '-' }} ({{ meal.bread or '-' }})</li>
+                                {% endfor %}
+                                </ul>
+                            {% else %}
+                                {{ b.filling or '-' }} / {{ b.bread or '-' }}
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {{ b.tel or '-' }}
+                            {% if b.confirmation_sent %}
+                            <br><small>✓ Confirmed</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ b.dietary or '-' }}</td>
+                        <td>
+                            {% if b.paid == 'Paid' %}
+                                <span class="status-paid">Paid</span>
+                            {% elif b.paid == 'Included' %}
+                                <span class="status-included">Included</span>
+                            {% elif b.paid == 'Voucher' %}
+                                <span class="status-voucher">Voucher</span>
+                            {% else %}
+                                <span class="status-unpaid">Unpaid</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ b.notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-bookings">No bookings for {{ service_name }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    
+    <div class="footer">
+        <p>Craiglands Booking System | Generated: {{ datetime.now().strftime('%d/%m/%Y %H:%M:%S') }}</p>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.close()" class="btn btn-secondary btn-sm">Close</button>
+    </div>
+
+    <script>
+        function updatePrintPreview() {
+            const checkboxes = document.querySelectorAll('.service-checkbox-input');
+            checkboxes.forEach(cb => {
+                const sectionId = 'section-' + cb.value.replace(/ /g, '-');
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = cb.checked ? 'block' : 'none';
+                }
+            });
+        }
+
+        function printSelected() {
+            updatePrintPreview();
+            window.print();
+            setTimeout(() => {
+                const checkboxes = document.querySelectorAll('.service-checkbox-input');
+                checkboxes.forEach(cb => {
+                    const sectionId = 'section-' + cb.value.replace(/ /g, '-');
+                    const section = document.getElementById(sectionId);
+                    if (section) section.style.display = 'block';
+                });
+            }, 1000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkboxes = document.querySelectorAll('.service-checkbox-input');
+            checkboxes.forEach(cb => cb.checked = true);
+        });
+    </script>
+</body>
+</html>
