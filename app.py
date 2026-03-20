@@ -159,18 +159,29 @@ def init_database():
                 dietary TEXT
             )
         ''')
+        # Create guest_meals table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS guest_meals (
+                id SERIAL PRIMARY KEY,
+                booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+                guest_number INTEGER NOT NULL,
+                filling TEXT,
+                bread TEXT,
+                dietary TEXT
+            )
+        ''')
 
-     # Create activity_log table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id SERIAL PRIMARY KEY,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            action_type TEXT NOT NULL,
-            booking_id INTEGER,
-            details TEXT,
-            username TEXT DEFAULT 'system'
-        )
-    ''')
+        # Create activity_log table
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                action_type TEXT NOT NULL,
+                booking_id INTEGER,
+                details TEXT,
+                username TEXT DEFAULT 'system'
+            )
+        ''')
 
         # Indexes
         c.execute('CREATE INDEX IF NOT EXISTS idx_date ON bookings(date)')
@@ -185,8 +196,9 @@ def init_database():
         conn.close()
         logger.info("✅ Database initialized/migrated successfully")
         print("=== INIT DATABASE SUCCESS ===")
-    except Exception as e:
+        except Exception as e:
         logger.error(f"❌ Database initialization error: {e}")
+        print(f"=== INIT DATABASE ERROR: {e} ===")
 
 # Run database init on startup
 init_database()
