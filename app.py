@@ -4,6 +4,7 @@ import socket
 import logging
 import smtplib
 import json
+import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from email.mime.multipart import MIMEMultipart
@@ -19,14 +20,14 @@ import psycopg2.extras
 # CONFIGURATION
 # ============================================
 HOST = '0.0.0.0'
-PORT = 5000
+PORT = 10000
 DEBUG = False
 
 # ============================================
 # EMAIL CONFIGURATION (from environment)
 # ============================================
 EMAIL_SENDER = "craiglandsg@gmail.com"
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")  # Must be set in Render
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
 EMAIL_RECIPIENT = "reservations@craiglands.co.uk"
 EMAIL_CC = "gm@craiglands.co.uk"
 
@@ -60,7 +61,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================
-# GET NETWORK INFO (unchanged)
+# GET NETWORK INFO
 # ============================================
 def get_network_info():
     try:
@@ -88,7 +89,7 @@ def get_network_info():
         return "Unknown", ["127.0.0.1"]
 
 # ============================================
-# HELPER - TODAY'S DATE (unchanged)
+# HELPER - TODAY'S DATE
 # ============================================
 def get_today_date():
     return datetime.now().strftime('%Y-%m-%d')
@@ -97,7 +98,7 @@ def get_date_days_from_now(days):
     return (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d')
 
 # ============================================
-# DATABASE SETUP & MIGRATION (PostgreSQL version)
+# DATABASE SETUP & MIGRATION
 # ============================================
 def init_database():
     print("=== INIT DATABASE START ===")
@@ -145,20 +146,8 @@ def init_database():
 
         for col in expected_columns:
             if col not in existing_columns:
-                # Add column if missing
                 c.execute(f"ALTER TABLE bookings ADD COLUMN {col} TEXT")
 
-        # Create guest_meals table
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS guest_meals (
-                id SERIAL PRIMARY KEY,
-                booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-                guest_number INTEGER NOT NULL,
-                filling TEXT,
-                bread TEXT,
-                dietary TEXT
-            )
-        ''')
         # Create guest_meals table
         c.execute('''
             CREATE TABLE IF NOT EXISTS guest_meals (
@@ -196,7 +185,8 @@ def init_database():
         conn.close()
         logger.info("✅ Database initialized/migrated successfully")
         print("=== INIT DATABASE SUCCESS ===")
-        except Exception as e:
+
+    except Exception as e:
         logger.error(f"❌ Database initialization error: {e}")
         print(f"=== INIT DATABASE ERROR: {e} ===")
 
@@ -204,7 +194,7 @@ def init_database():
 init_database()
 
 # ============================================
-# LOGGING FUNCTION (uses PostgreSQL)
+# LOGGING FUNCTION
 # ============================================
 def log_activity(action_type, booking_id=None, details=None):
     try:
@@ -220,7 +210,7 @@ def log_activity(action_type, booking_id=None, details=None):
         logger.error(f"Error logging activity: {e}")
 
 # ============================================
-# EMAIL FUNCTIONS (unchanged except database calls)
+# EMAIL FUNCTIONS
 # ============================================
 def send_customer_confirmation(booking_id, guest_email, is_cancellation=False):
     try:
@@ -234,7 +224,6 @@ def send_customer_confirmation(booking_id, guest_email, is_cancellation=False):
             booking['guest_meals'] = [dict(row) for row in c.fetchall()]
         conn.close()
 
-        # (rest of email sending code unchanged)
         if is_cancellation:
             subject = f"Craiglands Booking Cancellation - {booking['date']}"
             body = f"""
@@ -436,19 +425,6 @@ def send_future_bookings_backup(schedule_time="20:00"):
         logger.error(f"❌ Future bookings backup failed at {schedule_time}: {e}")
 
 # ============================================
-# SCHEDULER (disabled for cloud, cron job will be used)
-# ============================================
-# def run_scheduler():
-#     schedule.every().day.at("20:00").do(lambda: send_future_bookings_backup("20:00"))
-#     while True:
-#         schedule.run_pending()
-#         time.sleep(60)
-
-# scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-# scheduler_thread.start()
-# logger.info("✅ Email scheduler started - daily future bookings backup at 20:00")
-
-# ============================================
 # CREATE FLASK APP
 # ============================================
 app = Flask(__name__)
@@ -456,7 +432,7 @@ app.secret_key = 'craiglands-booking-system-2024-network'
 app.config['SESSION_TYPE'] = 'filesystem'
 
 # ============================================
-# AUTHENTICATION (unchanged)
+# AUTHENTICATION
 # ============================================
 FIXED_PASSWORD = "1020"
 ADMIN_IMPORT_CODE = "2020"
@@ -509,7 +485,7 @@ def import_auth():
     return render_template('import_auth.html')
 
 # ============================================
-# SERVICE CONFIGURATION (unchanged)
+# SERVICE CONFIGURATION
 # ============================================
 SERVICES = {
     'Lunch/Afternoon Tea': {'start': '12:00', 'end': '17:00'},
@@ -519,7 +495,7 @@ SERVICES = {
 SERVICE_ORDER = ['Packed Lunch', 'Lunch/Afternoon Tea', 'Dinner']
 
 # ============================================
-# HELPER FUNCTIONS (updated for PostgreSQL)
+# HELPER FUNCTIONS
 # ============================================
 def get_db():
     return get_db_connection()
@@ -635,7 +611,7 @@ def get_logs_for_booking(booking_id):
         return []
 
 # ============================================
-# ROUTES (updated to use PostgreSQL)
+# ROUTES
 # ============================================
 @app.route('/')
 @login_required
@@ -1316,7 +1292,6 @@ def network_info():
 # ============================================
 # START APPLICATION
 # ============================================
-init_database()
 if __name__ == '__main__':
     print("=" * 70)
     print("CRAIGLANDS BOOKING SYSTEM - NETWORK SERVER")
@@ -1325,7 +1300,6 @@ if __name__ == '__main__':
     for folder in ['templates', 'exports', 'logs', 'backups']:
         os.makedirs(folder, exist_ok=True)
     print("\n✓ Database ready")
-    print("✓ Email scheduler running - daily future bookings backup at 20:00")
     print("\n" + "=" * 70)
     print("ACCESS INFORMATION:")
     print("=" * 70)
@@ -1340,7 +1314,6 @@ if __name__ == '__main__':
         print(f"  • http://{hostname}:5000")
     print("\n" + "=" * 70)
     print("DATA LOCATION: PostgreSQL database")
-    print("Daily future backups at 20:00 to: reservations@craiglands.co.uk (CC: gm@craiglands.co.uk)")
     print("=" * 70)
     print("\nStarting server... (Press Ctrl+C to stop)")
     try:
