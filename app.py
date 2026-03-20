@@ -160,17 +160,17 @@ def init_database():
             )
         ''')
 
-        # Create activity_log table
-   c.execute('''
-    CREATE TABLE IF NOT EXISTS activity_log (
-        id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        action_type TEXT NOT NULL,
-        booking_id INTEGER,
-        details TEXT,
-        username TEXT DEFAULT 'system'
-    )
-''')
+     # Create activity_log table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS activity_log (
+            id SERIAL PRIMARY KEY,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            action_type TEXT NOT NULL,
+            booking_id INTEGER,
+            details TEXT,
+            username TEXT DEFAULT 'system'
+        )
+    ''')
 
         # Indexes
         c.execute('CREATE INDEX IF NOT EXISTS idx_date ON bookings(date)')
