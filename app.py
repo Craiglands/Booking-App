@@ -362,7 +362,7 @@ def send_future_bookings_backup(schedule_time="20:00"):
         rows = c.fetchall()
         data = [dict(row) for row in rows]
         conn.close()
-        
+
         logger.info(f"Found {len(data)} future bookings")
 
         if not data:
@@ -418,7 +418,7 @@ def send_future_bookings_backup(schedule_time="20:00"):
                               filename=f'future_bookings_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx')
         msg.attach(attachment)
 
-         logger.info(f"Attempting to send email to {EMAIL_RECIPIENT} (CC: {EMAIL_CC})")
+        logger.info(f"Attempting to send email to {EMAIL_RECIPIENT} (CC: {EMAIL_CC})")
         try:
             server = smtplib.SMTP('smtp.gmail.com', 587)
             logger.info("SMTP server connected")
@@ -434,7 +434,7 @@ def send_future_bookings_backup(schedule_time="20:00"):
         except Exception as email_error:
             logger.error(f"Email sending failed: {email_error}")
             raise
-        
+
     except Exception as e:
         logger.error(f"❌ Future bookings backup failed at {schedule_time}: {e}")
         import traceback
@@ -1342,12 +1342,12 @@ def test_email_direct():
     try:
         import smtplib
         from email.mime.text import MIMEText
-        
+
         msg = MIMEText("This is a simple test email from Craiglands.")
         msg['From'] = EMAIL_SENDER
         msg['To'] = "reservations@craiglands.co.uk"
         msg['Subject'] = "Simple Test Email"
-        
+
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
