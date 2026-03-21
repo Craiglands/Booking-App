@@ -5,6 +5,7 @@ import logging
 import smtplib
 import json
 import time
+import threading 
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from email.mime.multipart import MIMEMultipart
@@ -1168,9 +1169,16 @@ def test_email_route():
 
 @app.route('/cron_backup')
 def cron_backup():
-    """Endpoint for Render cron job to trigger daily backup."""
-    send_future_bookings_backup("Cron")
-    return "Backup sent", 200
+    """Trigger backup in background so cron job doesn't timeout"""
+    def send_backup():
+        try:
+            send_future_bookings_backup("Cron")
+        except Exception as e:
+            logger.error(f"Background backup failed: {e}")
+    
+    thread = threading.Thread(target=send_backup)
+    thread.start()
+    return "Backup started", 200
 
 @app.route('/test_simple_email')
 @login_required
