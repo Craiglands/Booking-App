@@ -544,7 +544,28 @@ def get_booking_count(date_str, service, time_slot):
         return result['count'] if result else 0
     except:
         return 0
-
+def get_availability_batch(date_str):
+    """Fetch all booking counts for all services and time slots in one query"""
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('''
+            SELECT service, time, COUNT(*) as count 
+            FROM bookings 
+            WHERE date = %s AND is_deleted = 0
+            GROUP BY service, time
+        ''', (date_str,))
+        rows = c.fetchall()
+        conn.close()
+        
+        # Build a lookup dictionary: (service, time) -> count
+        counts = {}
+        for row in rows:
+            counts[(row['service'], row['time'])] = row['count']
+        return counts
+    except Exception as e:
+        logger.error(f"Error fetching availability: {e}")
+        return {}
 def get_bookings_with_meals(bookings_rows):
     bookings = rows_to_dicts(bookings_rows)
     conn = get_db()
@@ -638,12 +659,16 @@ def index():
         bookings = []
         flash('Error loading bookings', 'danger')
 
+    # Get all availability counts in one batch query
+    availability_counts = get_availability_batch(selected_date)
+
+    # Build the availability structure
     availability = {}
     for service_name, times in SERVICES.items():
         slots = generate_time_slots(times['start'], times['end'])
         service_avail = {}
         for slot in slots:
-            count = get_booking_count(selected_date, service_name, slot)
+            count = availability_counts.get((service_name, slot), 0)
             service_avail[slot] = {
                 'count': count,
                 'available': count < 2,
