@@ -430,7 +430,9 @@ def send_future_bookings_backup(schedule_time="20:00"):
 app = Flask(__name__)
 app.secret_key = 'craiglands-booking-system-2024-network'
 app.config['SESSION_TYPE'] = 'filesystem'
-
+@app.route('/health')
+def health():
+    return "OK", 200
 # ============================================
 # AUTHENTICATION
 # ============================================
