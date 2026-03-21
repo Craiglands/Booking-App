@@ -350,6 +350,7 @@ Payment: {booking['paid']}
 
 def send_future_bookings_backup(schedule_time="20:00"):
     try:
+        logger.info(f"Starting backup at {schedule_time}")
         tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         conn = get_db_connection()
         c = conn.cursor()
@@ -361,6 +362,8 @@ def send_future_bookings_backup(schedule_time="20:00"):
         rows = c.fetchall()
         data = [dict(row) for row in rows]
         conn.close()
+        
+        logger.info(f"Found {len(data)} future bookings")
 
         if not data:
             logger.info(f"No future bookings at {schedule_time}, skipping backup")
@@ -415,16 +418,18 @@ def send_future_bookings_backup(schedule_time="20:00"):
                               filename=f'future_bookings_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx')
         msg.attach(attachment)
 
+        logger.info(f"Attempting to send email to {EMAIL_RECIPIENT} (CC: {EMAIL_CC})")
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.send_message(msg)
         server.quit()
-
         logger.info(f"✅ Future bookings backup email sent at {schedule_time} (CC: {EMAIL_CC})")
+        
     except Exception as e:
         logger.error(f"❌ Future bookings backup failed at {schedule_time}: {e}")
-
+        import traceback
+        logger.error(traceback.format_exc())
 # ============================================
 # CREATE FLASK APP
 # ============================================
