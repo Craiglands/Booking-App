@@ -1337,7 +1337,25 @@ def network_info():
     </ul>
     <p><a href="/">Back to main page</a></p>
     '''
-
+@app.route('/test_email_direct')
+def test_email_direct():
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        
+        msg = MIMEText("This is a simple test email from Craiglands.")
+        msg['From'] = EMAIL_SENDER
+        msg['To'] = "reservations@craiglands.co.uk"
+        msg['Subject'] = "Simple Test Email"
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return "Simple email sent successfully", 200
+    except Exception as e:
+        return f"Error: {str(e)}", 500
 # ============================================
 # START APPLICATION
 # ============================================
